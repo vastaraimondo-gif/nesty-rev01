@@ -1,0 +1,9 @@
+[
+  {
+    "source_key": "example_authorized_feed",
+    "source_name": "Example Authorized Feed",
+    "source_type": "json_feed",
+    "feed_url": "https://example.com/authorized-feed.json",
+    "enabled": false
+  }
+]
