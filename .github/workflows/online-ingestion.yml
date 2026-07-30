@@ -1,0 +1,26 @@
+name: Nesty Online Ingestion
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  online-ingestion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Run online ingestion engine
+        run: node scripts/online-ingestion-engine.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LISTING_FEEDS_JSON: ${{ secrets.LISTING_FEEDS_JSON }}
+          IDEALISTA_PARSE_API_KEY: ${{ secrets.IDEALISTA_PARSE_API_KEY }}
+          IDEALISTA_PAGES: ${{ secrets.IDEALISTA_PAGES }}
+          IDEALISTA_MIN_PRICE: ${{ secrets.IDEALISTA_MIN_PRICE }}
+          IDEALISTA_MAX_PRICE: ${{ secrets.IDEALISTA_MAX_PRICE }}
