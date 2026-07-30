@@ -1,9 +1,237 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getDistrictEngineData } from './services/marketService.js';
-import { calculateRoomScore, calculateApartmentScore, scoreLabel } from './services/scoreEngine.js';
-function Logo(){return <div className="logo-wrap"><div className="logo-mark"><svg viewBox="0 0 48 48"><path d="M8 24 24 10l16 14v16a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3V24Z" fill="currentColor"/><path d="M19 43V30h10v13" fill="#fff"/><path d="M16 24h16" stroke="#fff" strokeWidth="3" strokeLinecap="round"/></svg></div><div className="logo-text"><strong>Nesty</strong><small>Trova il posto giusto</small></div></div>}
-function MilanVisual(){return <div className="milan-card"><div className="visual-top"><span>Milano</span><b>Quartieri · Metro · Budget</b></div><div className="milan-scene"><div className="sun"/><div className="duomo"><span className="spire sp1"/><span className="spire sp2"/><span className="spire sp3"/><span className="spire sp4"/><span className="spire sp5"/><span className="duomo-body"/><span className="duomo-door"/></div><div className="tram"><b>ATM</b><i/><i/></div><div className="zone-tag tag-left">Lambrate <strong>8.5</strong></div><div className="zone-tag tag-right">Città Studi <strong>8.7</strong></div></div><div className="metro-line"><b>M1</b><b>M2</b><b>M3</b><b>M4</b><b>M5</b></div></div>}
-function scoreForDistrict(d,mode,price,sizeMq,profile,expensesIncluded){return mode==='room'?calculateRoomScore({price,medianRoomPrice:d.median_room_price,mobilityScore:d.mobility_score,urbanQualityIndex:d.urban_quality_index,servicesScore:d.services_score,youthFitScore:d.youth_fit_score,expensesIncluded}).score:calculateApartmentScore({rent:price,sizeMq,euroMq:d.euro_mq_apartment,mobilityScore:d.mobility_score,urbanQualityIndex:d.urban_quality_index,servicesScore:d.services_score,trendScore:d.trend_score,profileFitScore:profile==='Studente'?d.youth_fit_score:8}).score}
-function Metric({label,value}){return <div className="metric"><div><span>{label}</span><b>{value}/10</b></div><i><u style={{width:`${Math.max(0,Math.min(100,value*10))}%`}}/></i></div>}
-function DistrictCard({district,index,mode,price,sizeMq,profile,expensesIncluded}){const score=scoreForDistrict(district,mode,price,sizeMq,profile,expensesIncluded);return <article className="district-card"><span>#{index+1}</span><h3>{district.name}</h3><p>{district.macro_area} · {district.metro}</p><strong>{score}/10</strong><small>{scoreLabel(score)}</small></article>}
-export default function App(){const[districts,setDistricts]=useState([]);const[mode,setMode]=useState('room');const[districtName,setDistrictName]=useState('Città Studi');const[price,setPrice]=useState(750);const[sizeMq,setSizeMq]=useState(55);const[expensesIncluded,setExpensesIncluded]=useState(false);const[profile,setProfile]=useState('Studente');useEffect(()=>{getDistrictEngineData().then(r=>{setDistricts(r.data);if(r.data?.[0]?.name&&!r.data.find(d=>d.name===districtName))setDistrictName(r.data[0].name)})},[]);const district=districts.find(d=>d.name===districtName)||districts[0];const result=useMemo(()=>{if(!district)return null;if(mode==='room')return calculateRoomScore({price,medianRoomPrice:district.median_room_price,mobilityScore:district.mobility_score,urbanQualityIndex:district.urban_quality_index,servicesScore:district.services_score,youthFitScore:district.youth_fit_score,expensesIncluded});return calculateApartmentScore({rent:price,sizeMq,euroMq:district.euro_mq_apartment,mobilityScore:district.mobility_score,urbanQualityIndex:district.urban_quality_index,servicesScore:district.services_score,trendScore:district.trend_score,profileFitScore:profile==='Studente'?district.youth_fit_score:8})},[mode,price,sizeMq,expensesIncluded,profile,district]);if(!district||!result)return <div className="loading">Caricamento Nesty...</div>;const benchmark=mode==='room'?district.median_room_price:Math.round(district.euro_mq_apartment*sizeMq);const deltaPercent=Math.round(result.delta*100);const saving=benchmark-price;const alternatives=[...districts].sort((a,b)=>scoreForDistrict(b,mode,price,sizeMq,profile,expensesIncluded)-scoreForDistrict(a,mode,price,sizeMq,profile,expensesIncluded)).slice(0,4);return <div className="app"><header className="hero"><nav className="nav"><Logo/><div className="nav-links"><a href="#valuta">Valuta</a><a href="#quartieri">Quartieri</a><a href="#metodo">Metodo</a></div><a className="nav-cta" href="#valuta">Prova gratis</a></nav><section className="hero-content"><div className="hero-copy"><p className="pill">Stanze e appartamenti a Milano</p><h1>Trova il posto giusto dove vivere a Milano.</h1><p>Nesty confronta prezzo, quartiere, collegamenti e qualità urbana per aiutarti a scegliere meglio, prima di firmare.</p><div className="hero-actions"><a href="#valuta">Calcola il tuo score</a><span>Risultato immediato · quartieri confrontabili</span></div></div><MilanVisual/></section></header><main><section id="valuta" className="calculator"><div className="form-card"><div className="section-label">Valutazione</div><h2>Cosa vuoi confrontare?</h2><div className="switch"><button className={mode==='room'?'active':''} onClick={()=>setMode('room')}>Stanza</button><button className={mode==='apartment'?'active':''} onClick={()=>setMode('apartment')}>Appartamento</button></div><label>Quartiere<select value={districtName} onChange={e=>setDistrictName(e.target.value)}>{districts.map(d=><option key={d.name}>{d.name}</option>)}</select></label><label>{mode==='room'?'Prezzo stanza':'Canone mensile'}<input type="number" value={price} onChange={e=>setPrice(Number(e.target.value))}/></label>{mode==='apartment'&&<label>Metri quadri<input type="number" value={sizeMq} onChange={e=>setSizeMq(Number(e.target.value))}/></label>}<label>Profilo<select value={profile} onChange={e=>setProfile(e.target.value)}><option>Studente</option><option>Giovane lavoratore</option><option>Coppia</option><option>Expat</option></select></label>{mode==='room'&&<label className="inline"><input type="checkbox" checked={expensesIncluded} onChange={e=>setExpensesIncluded(e.target.checked)}/> Spese incluse</label>}</div><div className="score-card"><span>{mode==='room'?'Room Score':'Home Score'}</span><strong>{result.score}</strong><em>/10</em><h3>{scoreLabel(result.score)}</h3><p>{district.name} · {district.metro}</p><div className="score-grid"><div><small>Prezzo</small><b>€ {price}</b></div><div><small>Media zona</small><b>€ {benchmark}</b></div><div><small>Differenza</small><b className={deltaPercent>10?'danger':'positive'}>{deltaPercent>0?'+':''}{deltaPercent}%</b></div></div><div className="insight">{saving>=0?`Risparmio potenziale rispetto alla media: € ${saving}/mese.`:`Prezzo sopra la media di circa € ${Math.abs(saving)}/mese.`}</div></div><div className="quality-card"><h3>Qualità del quartiere</h3><Metric label="Mobilità" value={district.mobility_score}/><Metric label="Qualità urbana" value={district.urban_quality_index}/><Metric label="Servizi" value={district.services_score}/><Metric label="Verde" value={district.green_score}/><Metric label="Compatibilità giovani" value={district.youth_fit_score}/></div></section><section id="quartieri" className="districts"><div className="section-title"><span>Alternative migliori</span><h2>Dove cercare con lo stesso budget</h2><p>Il motore confronta lo stesso budget su più zone della città e mette in evidenza le alternative più interessanti.</p></div><div className="district-grid">{alternatives.map((d,i)=><DistrictCard key={d.name} district={d} index={i} mode={mode} price={price} sizeMq={sizeMq} profile={profile} expensesIncluded={expensesIncluded}/>)}</div></section><section className="milan-section"><div className="milan-copy"><span>Milano, area per area</span><h2>Dal Centro alle zone universitarie, fino ai quartieri più accessibili.</h2><p>Nesty non si limita alle aree più note: confronta molte zone della città per aiutarti a capire dove il tuo budget può funzionare meglio.</p></div><div className="district-cloud">{districts.slice(0,32).map(d=><button key={d.name} onClick={()=>setDistrictName(d.name)}>{d.name}</button>)}</div></section><section id="metodo" className="steps"><article><b>1</b><h3>Prezzo</h3><p>Confronto con il benchmark della zona.</p></article><article><b>2</b><h3>Quartiere</h3><p>Mobilità, servizi e qualità urbana entrano nello score.</p></article><article><b>3</b><h3>Alternative</h3><p>Il budget viene confrontato su più quartieri.</p></article></section></main><footer><Logo/><p>Le valutazioni sono indicative e aiutano a confrontare alternative. Non costituiscono stima immobiliare professionale.</p></footer></div>}
+import { fetchSearchResults, getDistricts, submitListing } from './services/searchService.js';
+
+const FALLBACK_DISTRICTS = [
+  'Lambrate','Città Studi','Piola','Loreto','Isola','Bicocca','Navigli','Porta Romana','NoLo','Bovisa','De Angeli','San Siro','Romolo','Famagosta','Porta Venezia'
+];
+
+function Logo() {
+  return (
+    <div className="logo">
+      <span>N</span>
+      <div>
+        <b>Nesty</b>
+        <small>Lo Skyscanner degli affitti a Milano</small>
+      </div>
+    </div>
+  );
+}
+
+function ScoreBadge({ label, value }) {
+  const visible = value !== null && value !== undefined;
+  const n = Number(value || 0);
+  const cls = n >= 8.5 ? 'great' : n >= 7 ? 'good' : n >= 6 ? 'mid' : 'low';
+
+  return (
+    <div className={`score-badge ${cls}`}>
+      <small>{label}</small>
+      <strong>{visible ? n.toFixed(1) : 'n/d'}</strong>
+    </div>
+  );
+}
+
+function ListingCard({ item }) {
+  const delta = item.median_price && item.price
+    ? Math.round(((item.price - item.median_price) / item.median_price) * 100)
+    : null;
+
+  const title = item.room_type === 'single'
+    ? 'Stanza singola'
+    : item.listing_type === 'room'
+      ? 'Stanza'
+      : 'Appartamento';
+
+  return (
+    <article className="listing-card">
+      <div className="listing-top">
+        <div>
+          <p className="eyebrow">{item.listing_type === 'room' ? 'Stanza' : 'Appartamento'} · {item.district_name || 'Milano'}</p>
+          <h3>{title} a {item.district_name || 'Milano'}</h3>
+        </div>
+        <div className="price">€ {Number(item.price || 0).toLocaleString('it-IT')}</div>
+      </div>
+
+      <div className="scores">
+        <ScoreBadge label="Nesty Score" value={item.score} />
+        <ScoreBadge label="Opportunity" value={item.opportunity_score} />
+        <ScoreBadge label="Prezzo" value={item.price_score} />
+      </div>
+
+      <div className="facts">
+        <span>{item.size_mq ? `${item.size_mq} mq` : 'mq non indicati'}</span>
+        <span>{item.expenses_included ? 'Spese incluse' : 'Spese da verificare'}</span>
+        <span>Benchmark: {item.median_price ? `€ ${Number(item.median_price).toLocaleString('it-IT')}` : 'in costruzione'}</span>
+        <span>{delta === null ? 'Delta mercato: n/d' : `Delta mercato: ${delta > 0 ? '+' : ''}${delta}%`}</span>
+        <span>Campione: {item.sample_size || 0}</span>
+      </div>
+
+      <p className="verdict">{item.verdict || 'Annuncio acquisito. Score in calcolo.'}</p>
+
+      <div className="listing-actions">
+        {item.url ? <a href={item.url} target="_blank" rel="noreferrer">Apri annuncio</a> : <button disabled>Link non disponibile</button>}
+        <button>Salva alert</button>
+      </div>
+    </article>
+  );
+}
+
+function IntakeForm({ districts, onCreated }) {
+  const [form, setForm] = useState({
+    listingType: 'room',
+    districtName: 'Lambrate',
+    price: 720,
+    sizeMq: 18,
+    roomType: 'single',
+    expensesIncluded: true,
+    title: '',
+    url: '',
+    text: ''
+  });
+  const [status, setStatus] = useState('');
+  const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setStatus('Salvataggio nel motore Nesty...');
+    try {
+      await submitListing(form);
+      setStatus('Annuncio salvato e valutato. Ora appare nei risultati.');
+      onCreated?.();
+    } catch (err) {
+      setStatus(`Errore: ${err.message}`);
+    }
+  }
+
+  return (
+    <form className="intake" onSubmit={handleSubmit}>
+      <div className="section-title compact">
+        <span>Alimenta il motore</span>
+        <h2>Analizza un annuncio online</h2>
+        <p>Incolla link e dettagli dell'annuncio. Nesty salva, normalizza e valuta il dato.</p>
+      </div>
+
+      <div className="grid two">
+        <label>Tipo
+          <select value={form.listingType} onChange={e => set('listingType', e.target.value)}>
+            <option value="room">Stanza</option>
+            <option value="apartment">Appartamento</option>
+          </select>
+        </label>
+        <label>Zona
+          <select value={form.districtName} onChange={e => set('districtName', e.target.value)}>
+            {districts.map(d => <option key={d}>{d}</option>)}
+          </select>
+        </label>
+        <label>Prezzo
+          <input type="number" value={form.price} onChange={e => set('price', e.target.value)} />
+        </label>
+        <label>Mq
+          <input type="number" value={form.sizeMq} onChange={e => set('sizeMq', e.target.value)} />
+        </label>
+      </div>
+
+      <label>Link annuncio
+        <input value={form.url} onChange={e => set('url', e.target.value)} placeholder="https://..." />
+      </label>
+      <label>Titolo
+        <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Stanza singola Lambrate 720€" />
+      </label>
+      <label>Testo annuncio
+        <textarea value={form.text} onChange={e => set('text', e.target.value)} placeholder="Incolla descrizione annuncio..." />
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={form.expensesIncluded} onChange={e => set('expensesIncluded', e.target.checked)} /> Spese incluse
+      </label>
+      <button className="primary" type="submit">Salva e valuta annuncio</button>
+      {status && <p className="status">{status}</p>}
+    </form>
+  );
+}
+
+export default function App() {
+  const [listingType, setListingType] = useState('room');
+  const [district, setDistrict] = useState('Lambrate');
+  const [maxBudget, setMaxBudget] = useState('900');
+  const [districts, setDistricts] = useState(FALLBACK_DISTRICTS);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function search() {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await fetchSearchResults({ listingType, district, maxBudget });
+      setResults(data);
+    } catch (err) {
+      setError(err.message);
+      setResults([]);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    getDistricts().then(list => { if (list.length) setDistricts(list); });
+    search();
+  }, []);
+
+  const headline = useMemo(() => {
+    if (loading) return 'Ricerca in corso...';
+    if (!results.length) return 'Nessun annuncio trovato con questi filtri.';
+    return `${results.length} annunci trovati, ordinati per opportunità.`;
+  }, [results, loading]);
+
+  return (
+    <div className="app">
+      <header className="hero">
+        <nav>
+          <Logo />
+          <a href="#intake">Inserisci annuncio</a>
+        </nav>
+
+        <section className="hero-inner">
+          <p className="pill">Nesty Search Engine</p>
+          <h1>Cosa stai cercando?</h1>
+          <p className="subtitle">Trova stanze e appartamenti a Milano. Nesty confronta prezzo, quartiere, mobilità, servizi e vivibilità per capire quali offerte meritano davvero il tuo tempo.</p>
+
+          <div className="search-box">
+            <select value={listingType} onChange={e => setListingType(e.target.value)}>
+              <option value="room">Stanza</option>
+              <option value="apartment">Appartamento</option>
+            </select>
+            <select value={district} onChange={e => setDistrict(e.target.value)}>
+              {districts.map(d => <option key={d}>{d}</option>)}
+            </select>
+            <input type="number" value={maxBudget} onChange={e => setMaxBudget(e.target.value)} placeholder="Budget max" />
+            <button onClick={search}>Cerca</button>
+          </div>
+        </section>
+      </header>
+
+      <main>
+        <section className="results-head">
+          <div>
+            <span>Risultati</span>
+            <h2>{headline}</h2>
+            {error && <p className="error">{error}</p>}
+          </div>
+          <button onClick={search}>{loading ? 'Carico...' : 'Aggiorna'}</button>
+        </section>
+
+        <section className="results-grid">
+          {results.map(item => <ListingCard key={item.listing_id} item={item} />)}
+          {!results.length && (
+            <div className="empty">
+              <h3>Il motore è pronto.</h3>
+              <p>Inserisci un annuncio reale dal modulo sotto: Nesty lo salva, lo valuta e lo rende cercabile.</p>
+            </div>
+          )}
+        </section>
+
+        <section id="intake">
+          <IntakeForm districts={districts} onCreated={search} />
+        </section>
+      </main>
+    </div>
+  );
+}
